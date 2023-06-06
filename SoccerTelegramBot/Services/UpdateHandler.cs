@@ -4,7 +4,6 @@ using SoccerTelegramBot.Data;
 using SoccerTelegramBot.Entities;
 using System.Data;
 using System.Globalization;
-using System.Threading;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -22,9 +21,10 @@ namespace SoccerTelegramBot.Services
         private readonly DatabaseContext _databaseContext;
         private readonly GameDay _gameDay;
         private readonly TimeOnly _timeLimitForSubsctibe = new(14, 00);
-        private readonly UserService _userService;        
+        private readonly UserService _userService;
         private readonly StepService _stepService;
         private readonly RulesService _rulesService;
+        private readonly NotificationService _notificationService;
 
         const string _commands = "/help - список команд\r\n" +
                 "/signup - записаться на игру\r\n" +
@@ -37,12 +37,12 @@ namespace SoccerTelegramBot.Services
                 "/costonegame - стоимость одной игры\r\n" +
                 "/costsubscribe - стоимость абонемента\r\n" +
                 "/gameday - день игры (ближайшая игра)\r\n" +
-                "/getmyid - получить свой telegramId";
+                "/getmyid - получить свой telegramId\r\n";
         const string GROUPID = "groupid";
         const int MAX_SUBSCRIBSION = 15;
 
 
-        public UpdateHandler(ITelegramBotClient botClient, ILogger<UpdateHandler> logger, DatabaseContext databaseContext, GameDay gameDay, UserService userService, StepService stepService, RulesService rulesService)
+        public UpdateHandler(ITelegramBotClient botClient, ILogger<UpdateHandler> logger, DatabaseContext databaseContext, GameDay gameDay, UserService userService, StepService stepService, RulesService rulesService, NotificationService notificationService)
         {
             _botClient = botClient;
             _logger = logger;
@@ -51,6 +51,7 @@ namespace SoccerTelegramBot.Services
             _userService = userService;
             _stepService = stepService;
             _rulesService = rulesService;
+            _notificationService = notificationService;
         }
 
         public async Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -122,8 +123,8 @@ namespace SoccerTelegramBot.Services
                 "/listsubscription@SoccerTelegramBot" => ListSubscription(message, cancellationToken),
                 "/rules" => GetRules(message, cancellationToken),
                 "/rules@SoccerTelegramBot" => GetRules(message, cancellationToken),
-                "/setgameday" => Usage(_botClient, message, cancellationToken),
-                "/setgameday@SoccerTelegramBot" => Usage(_botClient, message, cancellationToken),
+                "/setgameday" => SetGameday(message, cancellationToken),
+                "/setgameday@SoccerTelegramBot" => SetGameday(message, cancellationToken),
                 "/addsubscriptions" => AddSubscription(message, cancellationToken),
                 "/addsubscriptions@SoccerTelegramBot" => AddSubscription(message, cancellationToken),
                 "/setrules" => SetRules(message, cancellationToken),
@@ -140,7 +141,7 @@ namespace SoccerTelegramBot.Services
             };
 
             Message sentMessage = await action;
-            _logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);            
+            _logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
 
             static async Task<Message> SignUpGroup(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken, DatabaseContext db, GameDay gameDay, TimeOnly timeLimitForSubsctibe, UserService userService)
             {
@@ -420,7 +421,7 @@ namespace SoccerTelegramBot.Services
             var suUser = await _databaseContext.Users.FindAsync(long.Parse(suUserId.Value));
 
             var text = string.Empty;
-            if (! await _userService.CheckAdmin(message?.From, cancellationToken))
+            if (!await _userService.CheckAdmin(message?.From, cancellationToken))
             {
                 if (message.Chat.Type.Equals(ChatType.Supergroup))
                 {
@@ -464,7 +465,7 @@ namespace SoccerTelegramBot.Services
                             text += $"Пользовтаель с ID {number} не найден\n";
                         }
                     }
-                }                
+                }
             }
 
             text += $"Заявки на подписки, месяц {CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(today.Month)} {today.Year}\n";
@@ -485,7 +486,7 @@ namespace SoccerTelegramBot.Services
 
         private async void SendMessageToGroup(Message? message, CancellationToken cancellationToken, string text)
         {
-            if(message is not null && message?.Chat?.Id == message?.From?.Id)
+            if (message is not null && message?.Chat?.Id == message?.From?.Id)
             {
                 var group = await _databaseContext.Configurations.Where(x => x.Label.Equals(GROUPID)).FirstOrDefaultAsync(cancellationToken);
                 if (group is not null)
@@ -512,7 +513,7 @@ namespace SoccerTelegramBot.Services
                 }
             }
 
-            if (! await _userService.CheckAdmin(message?.From, cancellationToken))
+            if (!await _userService.CheckAdmin(message?.From, cancellationToken))
             {
                 text += "У вас нет права на данное действие";
                 return await _botClient.SendTextMessageAsync(
@@ -539,7 +540,7 @@ namespace SoccerTelegramBot.Services
         }
 
         private async Task<Message> GetRules(Message? message, CancellationToken cancellationToken)
-        {            
+        {
             var rules = await _rulesService.GetRules();
             if (String.IsNullOrEmpty(rules))
             {
@@ -588,6 +589,31 @@ namespace SoccerTelegramBot.Services
                 text: usage,
                 replyMarkup: new ReplyKeyboardRemove(),
                 cancellationToken: cancellationToken);
+        }
+
+        private async Task<Message> SetGameday(Message message, CancellationToken cancellationToken)
+        {
+            var isAdmin = await _userService.CheckAdmin(message.From, cancellationToken);
+            var text = String.Empty;
+
+            if (isAdmin)
+            {
+                _ = await _gameDay.SetGameDayAsync(3);
+                var nextDataGeme = await _gameDay.GetDateGameAsync();
+                _ = await _notificationService.SetNotificationAsync(DateOnly.FromDateTime(nextDataGeme.AddDays(-1)));
+
+                text += "Новый день игры задан";
+            }
+            else
+            {
+                text += "У вас нет права на данное действие";
+            }
+
+            return await _botClient.SendTextMessageAsync(
+                    chatId: message?.Chat?.Id,
+                    text: text,
+                    replyMarkup: new ReplyKeyboardRemove(),
+                    cancellationToken: cancellationToken);
         }
     }
 }

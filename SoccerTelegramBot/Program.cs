@@ -26,11 +26,13 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddTransient<GameDay>();
         services.AddTransient<UserService>();
         services.AddTransient<RulesService>();
+        services.AddTransient<NotificationService>();
 
-        services.AddSingleton<StepService>();
+        services.AddSingleton<StepService>();        
 
-        services.AddDbContext<DatabaseContext>(options => options.UseSqlite(context.Configuration.GetConnectionString("DefaultConnection")));        
+        services.AddDbContext<DatabaseContext>(options => options.UseSqlite(context.Configuration.GetConnectionString("DefaultConnection")));
 
+        services.AddHostedService<SendNotificationService>();
         services.AddHostedService<PollingService>();
 
     })

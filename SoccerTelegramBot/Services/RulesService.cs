@@ -14,14 +14,26 @@ namespace SoccerTelegramBot.Services
         }
 
         public async Task<int> SetRulesAsync(string rulesText) {
-            Configuration configuration = new()
-            {
-                Label = RULES_LABEL,
-                Name = "Правила группы",
-                Value = rulesText
-            };
 
-            _databaseContext.Add(configuration);
+            Configuration? configuration = await _databaseContext.Configurations.FirstOrDefaultAsync(x => x.Label.Equals(RULES_LABEL, StringComparison.Ordinal));
+
+            if (configuration == null)
+            {
+                configuration = new()
+                {
+                    Label = RULES_LABEL,
+                    Name = "Правила группы",
+                    Value = rulesText
+                };
+
+                _databaseContext.Add(configuration);
+            }
+            else
+            {
+                configuration.Value = rulesText;
+                _databaseContext.Update(configuration);
+            }
+            
             return await _databaseContext.SaveChangesAsync();
         }
 
