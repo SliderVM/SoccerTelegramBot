@@ -167,7 +167,7 @@ namespace SoccerTelegramBot.Services
 
                 var text = string.Empty;
 
-                if (isPayment || (DateTime.Now.Date < gameDate && DateTime.Now.ToShortTimeString().Equals(timeLimitForSubsctibe.ToShortTimeString())))
+                if (!isPayment || (DateTime.Now.Date < gameDate && DateTime.Now.ToShortTimeString().Equals(timeLimitForSubsctibe.ToShortTimeString())))
                 {
                     text += $"У вас нет подписки, запись на игру откроется после {gameDate.Date} {timeLimitForSubsctibe.ToShortTimeString()}\n\n";
 

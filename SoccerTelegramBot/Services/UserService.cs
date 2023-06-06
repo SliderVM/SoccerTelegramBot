@@ -26,7 +26,7 @@ namespace SoccerTelegramBot.Services
             }
 
             long userId = fromUser?.Id ?? 0;
-            var user = await _databaseContext.Users.Where(x => x.Id == userId).FirstOrDefaultAsync(cancellationToken: cancellationToken);
+            var user = await _databaseContext.Users.Where(x => x.Id == userId).Include(x => x.Signeds).Include(c => c.Subscriptions).FirstOrDefaultAsync(cancellationToken: cancellationToken);
 
             if (user == null)
             {
