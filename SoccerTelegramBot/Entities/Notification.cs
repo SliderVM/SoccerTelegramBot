@@ -2,13 +2,11 @@
 
 namespace SoccerTelegramBot.Entities
 {
-    public class Configuration
+    public class Notification
     {
-        [Key]        
+        [Key]
         public int Id { get; set; }
-        public string? Name { get; set; }
+        public string? NotificationLabel { get; set; }
         public string? Value { get; set; }
-        [Required]
-        public string Label { get; set; } = string.Empty;
     }
 }

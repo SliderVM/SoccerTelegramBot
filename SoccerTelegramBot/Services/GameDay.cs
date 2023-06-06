@@ -7,6 +7,9 @@ namespace SoccerTelegramBot.Services
     {
         private DatabaseContext _databaseContext;
 
+        private const string GAME_DAY = "gameday";
+        private const string CONFIGURATION_NAME = "День игры";
+
         public GameDay(DatabaseContext databaseContext)
         {
             _databaseContext = databaseContext;
@@ -21,7 +24,7 @@ namespace SoccerTelegramBot.Services
 
         public async Task<DateTime> GetDateGameAsync()
         {
-            var gameDay = await _databaseContext.Configurations.Where(x => x.Label.Equals("gameday")).FirstOrDefaultAsync();
+            var gameDay = await _databaseContext.Configurations.Where(x => x.Label.Equals(GAME_DAY)).FirstOrDefaultAsync();
 
             if (gameDay is null)
             {
@@ -42,6 +45,32 @@ namespace SoccerTelegramBot.Services
         {
             var gameTime = await _databaseContext.Configurations.Where(x => x.Label.Equals("gametime")).FirstOrDefaultAsync();
             return TimeOnly.Parse(gameTime.Value);
+        }
+
+        public async Task<Configuration> SetGameDayAsync(int dayOfWeek)
+        {
+            Configuration? configuration = await _databaseContext.Configurations.FirstOrDefaultAsync(x => x.Label.Equals(GAME_DAY));
+            
+            if (configuration is null)
+            {
+                configuration = new Configuration()
+                {
+                    Label = GAME_DAY,
+                    Name = CONFIGURATION_NAME,
+                    Value = dayOfWeek.ToString()
+                };
+
+                _databaseContext.Add(configuration);
+            }
+            else
+            {
+                configuration.Value = dayOfWeek.ToString();
+                _databaseContext.Configurations.Update(configuration);
+            }
+
+            await _databaseContext.SaveChangesAsync();
+
+            return configuration;
         }
     }
 }

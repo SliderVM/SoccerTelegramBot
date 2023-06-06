@@ -9,6 +9,9 @@ namespace SoccerTelegramBot
         public DbSet<Subscription> Subscriptions { get; set; }
         public DbSet<Signed> Signeds { get; set; }
         public DbSet<Configuration> Configurations { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+
+        public DatabaseContext() { }
 
         public DatabaseContext(DbContextOptions options) : base(options)
         {  
