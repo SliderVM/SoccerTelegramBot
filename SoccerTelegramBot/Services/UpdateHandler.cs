@@ -167,9 +167,17 @@ namespace SoccerTelegramBot.Services
 
                 var text = string.Empty;
 
-                if (!isPayment || (DateTime.Now.Date < gameDate && DateTime.Now.ToShortTimeString().Equals(timeLimitForSubsctibe.ToShortTimeString())))
+                // TODO перенести из статической ф-и и использовать константу _timeLimitForSubsctibe
+                var timeLimitHourAndMinutes = timeLimitForSubsctibe.ToString().Split(':');
+                var timeLimitHour = double.Parse(timeLimitHourAndMinutes[0]);
+                var timeLimitMinute = double.Parse(timeLimitHourAndMinutes[1]);
+                
+                gameDate = gameDate.AddHours(timeLimitHour);
+                gameDate = gameDate.AddMinutes(timeLimitMinute);
+
+                if (!isPayment && DateTime.Now < gameDate)
                 {
-                    text += $"У вас нет подписки, запись на игру откроется после {gameDate.Date} {timeLimitForSubsctibe.ToShortTimeString()}\n\n";
+                    text += $"У вас нет подписки, запись на игру откроется после {gameDate}\n\n";
 
                     text += await GetGameSignedInList(gameDate, db, cancellationToken);
 
@@ -266,9 +274,9 @@ namespace SoccerTelegramBot.Services
             {
                 var text = String.Empty;
                 var i = 1;
-                await db.Signeds.Where(x => x.GameDate.Date.Equals(gameDate.Date)).ForEachAsync(x =>
+                await db.Signeds.Where(x => x.GameDate.Date.Equals(gameDate.Date)).Include(x => x.User).ForEachAsync(x =>
                 {
-                    text += $"{i}. {x.User?.FirstName} {x.User?.LastName} {x.User?.UserName} {x.User?.Id}\n";
+                    text += $"{i}) {x.User?.FirstName} {x.User?.LastName} {x.User?.UserName} {x.User?.Id}\n";
                     i++;
                 }, cancellationToken);
 
