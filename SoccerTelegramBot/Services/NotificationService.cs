@@ -16,14 +16,14 @@ namespace SoccerTelegramBot.Services
 
         public async Task<DateTime> GetNotificationDate()
         {
-            Notification notification = await _databaseContext.Notifications.FirstOrDefaultAsync(x => x.NotificationLabel.Equals(NOTIFICATION_LABEL));
+            Notification? notification = await _databaseContext.Notifications.FirstOrDefaultAsync(x => x.NotificationLabel != null && x.NotificationLabel.Equals(NOTIFICATION_LABEL, StringComparison.Ordinal));
 
             return DateTime.Parse(notification.Value).Date;
         }
 
         public async Task<Notification> SetNotificationAsync(DateOnly dateOnly)
         {
-            Notification notification = await _databaseContext.Notifications.FirstOrDefaultAsync(x => x.NotificationLabel.Equals(NOTIFICATION_LABEL));
+            Notification? notification = await _databaseContext.Notifications.FirstOrDefaultAsync(x => x.NotificationLabel != null && x.NotificationLabel.Equals(NOTIFICATION_LABEL, StringComparison.Ordinal));
 
             if (notification == null)
             {

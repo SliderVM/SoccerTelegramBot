@@ -111,8 +111,8 @@ namespace SoccerTelegramBot.Services
             {
                 "/help" => Help(message, cancellationToken),
                 "/help@SoccerTelegramBot" => HelpFromGroup(message, cancellationToken),
-                "/signup" => SignUpGroup(_botClient, message, cancellationToken, _databaseContext, _gameDay, _timeLimitForSubsctibe, _userService),
-                "/signup@SoccerTelegramBot" => SignUpGroup(_botClient, message, cancellationToken, _databaseContext, _gameDay, _timeLimitForSubsctibe, _userService),
+                "/signup" => SignUpGroup(_botClient, message, cancellationToken, _databaseContext, _gameDay, _timeLimitForSubsctibe, _userService, _logger),
+                "/signup@SoccerTelegramBot" => SignUpGroup(_botClient, message, cancellationToken, _databaseContext, _gameDay, _timeLimitForSubsctibe, _userService, _logger),
                 "/refuse" => Refuse(_botClient, message, cancellationToken, _databaseContext, _userService, _gameDay, _timeLimitForSubsctibe),
                 "/refuse@SoccerTelegramBot" => Refuse(_botClient, message, cancellationToken, _databaseContext, _userService, _gameDay, _timeLimitForSubsctibe),
                 "/freesubscriptions" => FreeSubscriptions(message, cancellationToken),
@@ -143,7 +143,7 @@ namespace SoccerTelegramBot.Services
             Message sentMessage = await action;
             _logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
 
-            static async Task<Message> SignUpGroup(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken, DatabaseContext db, GameDay gameDay, TimeOnly timeLimitForSubsctibe, UserService userService)
+            static async Task<Message> SignUpGroup(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken, DatabaseContext db, GameDay gameDay, TimeOnly timeLimitForSubsctibe, UserService userService, ILogger logger)
             {
                 var user = await userService.GetUserAsync(message?.From, cancellationToken);
 
@@ -177,6 +177,9 @@ namespace SoccerTelegramBot.Services
 
                 if (!isPayment && DateTime.Now < gameDate)
                 {
+
+                    logger.LogDebug($"Пользовтаель {user.Id} имя {user.UserName} isPayment {isPayment} gameDate {gameDate} subscription {subscription?.Id} текущая дата {DateTime.Now}");
+
                     text += $"У вас нет подписки, запись на игру откроется после {gameDate}\n\n";
 
                     text += await GetGameSignedInList(gameDate, db, cancellationToken);
@@ -238,14 +241,15 @@ namespace SoccerTelegramBot.Services
 
             static async Task<Message> Refuse(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken, DatabaseContext db, UserService userService, GameDay gameDay, TimeOnly timeLimitForSubsctibe)
             {
-                var user = userService.GetUserAsync(message?.From, cancellationToken);
+                var user = await userService.GetUserAsync(message?.From, cancellationToken);
                 var gameDate = await gameDay.GetDateGameAsync();
-
-                var signIn = await db.Signeds.Where(x => x.GameDate.Date.Equals(gameDate.Date)).FirstOrDefaultAsync(cancellationToken);
+                
+                var signIn = await db.Signeds.Where(x => x.GameDate.Date.Equals(gameDate.Date) && x.User.Id.Equals(user.Id)).FirstOrDefaultAsync(cancellationToken);
 
                 if (signIn is not null)
                 {
                     db.Signeds.Remove(signIn);
+                    _ = await db.SaveChangesAsync(cancellationToken);
                 }
 
                 var text = await GetGameSignedInList(gameDate, db, cancellationToken);
@@ -272,7 +276,7 @@ namespace SoccerTelegramBot.Services
 
             static async Task<string> GetGameSignedInList(DateTime gameDate, DatabaseContext db, CancellationToken cancellationToken)
             {
-                var text = String.Empty;
+                var text = string.Empty;
                 var i = 1;
                 await db.Signeds.Where(x => x.GameDate.Date.Equals(gameDate.Date)).Include(x => x.User).ForEachAsync(x =>
                 {
