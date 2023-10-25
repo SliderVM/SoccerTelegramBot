@@ -483,7 +483,8 @@ namespace SoccerTelegramBot.Services
             text += $"Заявки на подписки, месяц {CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(today.Month)} {today.Year}\n";
 
             await _databaseContext.Subscriptions
-                .Where(x => !x.IsActive && x.Year.Equals(today.Year) && x.Month.Equals(today.Month))
+                .Where(x => !x.IsActive && x.Year.Equals(today.Year) && x.Month.Equals(today.Month))    
+                .Include(x => x.User)
                 .ForEachAsync(x =>
                 {
                     text += $"/addsubscriptions {x.User?.Id} {x?.User?.FirstName} {x?.User?.LastName} {x?.User?.UserName} \n";

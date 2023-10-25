@@ -1,13 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SoccerTelegramBot.Entities;
-using System.ComponentModel.DataAnnotations;
 using Telegram.Bot;
-using static System.Net.Mime.MediaTypeNames;
 using Telegram.Bot.Types.ReplyMarkups;
-using Telegram.Bot.Types;
-using System.Text.RegularExpressions;
 
 namespace SoccerTelegramBot.Services
 {
